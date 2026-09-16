@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Proyecto Teminal</title>
+        <link rel="stylesheet" href="{{url_for('static', filename ='css/main.css')}}">
+    </head>
+    <body>
+        <header>
+            <h1>UPIITA</h1>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home')}}">HOME</a></li>
+                    <li><a href="{{ url_for('consultas')}}">Consultas</a></li>
+                </ul>
+            </nav>
+        </header>
+        <div>
+            {%block content%}
+            {%endblock%}
+        </div>
+    </body>
+</html>

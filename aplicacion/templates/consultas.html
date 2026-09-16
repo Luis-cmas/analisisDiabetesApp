@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+<section class="consultas">
+
+  <h2 class="consultas__title">¡Comencemos a hacer consultas!</h2>
+
+  <div class="consultas__tutorial">
+    <p>
+      Para la correcta realización de las consultas, es recomendable
+      que primero veas el siguiente tutorial
+    </p>
+
+    <button class="btn btn--info">Ver tutorial</button>
+  </div>
+
+  <!-- FORMULARIO -->
+  <form class="consultas__form">
+
+    <div class="form-group">
+      <label>Alcaldía</label>
+      <select>
+        <option>Xochimilco</option>
+        <option>GAM</option>
+        <option>Iztapalapa</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Periodo</label>
+      <select>
+        <option>2020</option>
+        <option>2021</option>
+        <option>2022</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Parámetro social</label>
+      <select>
+        <option>Nivel académico</option>
+        <option>Pobreza</option>
+        <option>Acceso a salud</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn--primary">
+      Consultar
+    </button>
+
+  </form>
+
+  <!-- ALCALDÍAS SELECCIONADAS -->
+  
+    
+
+    <button class="selected__add">+</button>
+  
+
+  <!-- GRÁFICA -->
+  <div class="chart">
+    
+  </div>
+
+</section>
+
+{% endblock content %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Trabajo Terminal{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Trabajo terminal</h1>
+  <p>
+    Este es un proyecto realizado como trabajo terminal para la carrera de telemática de la UPIITA-IPN.
+    En esta página podrás visualizar el trabajo realizado de un análisis de datos sobre la diabetes mellitus, enfermedad que afecta a gran parte de la población mexicana.
+    En esta página podrás encontrar:
+  </p>
+
+  <div class="info">
+    <div class="texto">
+    <h3>Informacion sobre la diabetes</h3>
+    
+    <p>
+      puedes encontrar información básica sobre esta enfermedad, asi como otros sitios en los que puedes informarte sobre esta enfermedad.
+    </p>
+    
+    <h3>Consultas sobre la diabetes</h3>
+    
+    <p>
+      Aqui podrás realizar una variedad de consultas relacionadas con la diabetes en Ciudad de Mexico, podrás hacer cambios en tus consultas ya sea en periodo de tiempo, alcaldias que quieres observar, y otras variables sociales.
+    </p>
+    </div>
+    
+    <img class="logo" src="{{ url_for('static', filename='imagenes/logoTele.png') }}" alt="Logo de academia de telematica">
+  </div>
+  
+
+  <div class="frase">
+    <h1>La técnica al servicio de la patria</h1>
+  </div>
+  
+</section>
+{% endblock %}

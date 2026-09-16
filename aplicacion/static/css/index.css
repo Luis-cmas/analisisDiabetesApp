@@ -1,0 +1,165 @@
+.navbar nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.navbar nav a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navbar__button {
+  background: #000;
+  padding: 14px 24px;
+  border-radius: 8px;
+  transition: background 0.3s ease;
+}
+
+.navbar__button:hover {
+  background: #333;
+}
+/* CONSULTAS */
+.consultas {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* TÍTULO */
+.consultas__title {
+  font-size: 32px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* TUTORIAL */
+.consultas__tutorial {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.consultas__tutorial p {
+  font-size: 24px;
+  color: rgba(0,0,0,0.75);
+  max-width: 700px;
+}
+
+/* FORM */
+.consultas__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+}
+
+.form-group select {
+  width: 255px;
+  height: 61px;
+  background: #D9D9D9;
+  border: none;
+  padding: 0 16px;
+  font-size: 16px;
+}
+
+/* BOTONES */
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 14px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.btn--primary {
+  background: #000;
+  color: #fff;
+  height: 63px;
+}
+
+.btn--primary:hover {
+  background: #333;
+}
+
+.btn--info {
+  background: #2A91A3;
+  color: #fff;
+}
+
+.btn--info:hover {
+  background: #237b89;
+}
+
+/* SELECCIONADOS */
+.selected {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.selected__item {
+  background: #D9D9D9;
+  padding: 16px 24px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.selected__item span {
+  cursor: pointer;
+}
+
+.selected__add {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  font-size: 36px;
+  cursor: pointer;
+  background: #D9D9D9;
+}
+
+/* CHART */
+.chart {
+  text-align: center;
+}
+
+.chart h3 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.chart img {
+  max-width: 100%;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .consultas__tutorial {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .consultas__form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-group select {
+    width: 100%;
+  }
+}
