@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
-
 {% block content %}
-
 <section class="consultas">
 
   <h2 class="consultas__title">¡Comencemos a hacer consultas!</h2>
@@ -17,53 +15,118 @@
   </div>
 
   <!-- FORMULARIO -->
-  <form class="consultas__form">
+  <form class="consultas__form" method="POST" action="/consultar">
 
-    <div class="form-group">
-      <label>Alcaldía</label>
-      <select>
-        <option>Xochimilco</option>
-        <option>GAM</option>
-        <option>Iztapalapa</option>
-      </select>
+    <!-- Contenedor dinámico de alcaldías -->
+    <div id="alcaldias-container">
+      <div class="form-group select-alcaldia">
+        <label>Alcaldía</label>
+        <select name="alcaldia[]">
+          <option value="Álvaro Obregón">Álvaro Obregón</option>
+          <option value="Azcapotzalco">Azcapotzalco</option>
+          <option value="Benito Juárez">Benito Juárez</option>
+          <option value="Coyoacán">Coyoacán</option>
+          <option value="Cuajimalpa de Morelos">Cuajimalpa de Morelos</option>
+          <option value="Cuauhtémoc">Cuauhtémoc</option>
+          <option value="Gustavo A. Madero">Gustavo A. Madero</option>
+          <option value="Iztacalco">Iztacalco</option>
+          <option value="Iztapalapa">Iztapalapa</option>
+          <option value="La Magdalena Contreras">La Magdalena Contreras</option>
+          <option value="Miguel Hidalgo">Miguel Hidalgo</option>
+          <option value="Milpa Alta">Milpa Alta</option>
+          <option value="Tláhuac">Tláhuac</option>
+          <option value="Tlalpan">Tlalpan</option>
+          <option value="Venustiano Carranza">Venustiano Carranza</option>
+          <option value="Xochimilco">Xochimilco</option>
+        </select>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Periodo</label>
-      <select>
-        <option>2020</option>
-        <option>2021</option>
-        <option>2022</option>
+    <div class="form-group periodos">
+      <label>Periodo inicio</label>
+      <select name="periodo_inicio">
+        <option value="2015">2015</option>
+        <option value="2016">2016</option>
+        <option value="2017">2017</option>
+        <option value="2018">2018</option>
+        <option value="2019">2019</option>
+        <option value="2020">2020</option>
+      </select>
+      <label>Periodo fin</label>
+      <select name="periodo_fin">
+        <option value="2020">2020</option>
+        <option value="2019">2019</option>
+        <option value="2018">2018</option>
+        <option value="2017">2017</option>
+        <option value="2016">2016</option>
+        <option value="2015">2015</option>
       </select>
     </div>
 
     <div class="form-group">
       <label>Parámetro social</label>
-      <select>
-        <option>Nivel académico</option>
-        <option>Pobreza</option>
-        <option>Acceso a salud</option>
+      <select name="parametro">
+        <option value="mortalidad">Mortalidad general</option>
+        <option value="nivel_académico">Nivel académico</option>
+        <option value="pobreza">Pobreza</option>
+        <option value="edad">Edad</option>
+        <option value="sexo">Sexo</option>
+        <option value="dmt">Tipo de diabetes</option>
       </select>
     </div>
 
     <button type="submit" class="btn btn--primary">
       Consultar
     </button>
-
+    
   </form>
 
-  <!-- ALCALDÍAS SELECCIONADAS -->
-  
-    
+  <!-- Botón para agregar más alcaldías (en su posición original) -->
+  <button type="button" id="btn-add-alcaldia" class="selected__add">+</button>
 
-    <button class="selected__add">+</button>
-  
-
-  <!-- GRÁFICA -->
-  <div class="chart">
-    
+  <!-- CONTENEDOR DE LA GRÁFICA / RESULTADOS -->
+  <div class="consulta">
+    {% block seccion_consulta %}{% endblock %}
   </div>
-
 </section>
 
-{% endblock content %}
+<!-- JAVASCRIPT -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('alcaldias-container');
+    const addButton = document.getElementById('btn-add-alcaldia');
+    const MAX_SELECTS = 5;
+
+    addButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      const currentSelects = container.querySelectorAll('.select-alcaldia');
+
+      if (currentSelects.length < MAX_SELECTS) {
+        const newGroup = currentSelects[0].cloneNode(true);
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '✕';
+        removeBtn.className = 'btn-remove-alcaldia';
+        removeBtn.onclick = () => {
+          newGroup.remove();
+          addButton.disabled = false;
+        };
+
+        newGroup.appendChild(removeBtn);
+        container.appendChild(newGroup);
+
+        if (container.querySelectorAll('.select-alcaldia').length >= MAX_SELECTS) {
+          addButton.disabled = true;
+        }
+      }
+    });
+  });
+</script>
+{% if error %}
+  <script>
+    alert("{{ error }}");
+  </script>
+  {% endif %}
+{% endblock %}

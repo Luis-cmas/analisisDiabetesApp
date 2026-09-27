@@ -1,0 +1,54 @@
+{% extends "consultas.html" %}
+{% block seccion_consulta %}
+{% if datos_grafica %}
+<<div class="card my-4 p-3 shadow-sm" style="width: 90vw; margin: 20px auto; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <h4 class="card-title text-center">Tasa de Mortalidad por Diabetes (casos por 100k hab.)</h4>
+    <canvas id="graficaMortalidad" height="500vh" width="700vw"></canvas>
+</div>
+
+<script>
+    // Recuperar los datos desde Jinja2 pasados a JSON
+    const datosGrafica = {{ datos_grafica | tojson }};
+    
+    const ctx = document.getElementById('graficaMortalidad').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: datosGrafica.periodos, // Eje X: Años / Períodos
+            datasets: datosGrafica.datasets // Líneas por Alcaldía
+        },
+        options: {
+            responsive: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y} por 100k hab.`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Período (Año)'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Tasa por cada 100,000 habitantes'
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}
