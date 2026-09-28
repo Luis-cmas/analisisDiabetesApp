@@ -19,59 +19,57 @@
 
     <!-- Contenedor dinámico de alcaldías -->
     <div id="alcaldias-container">
+      {% set seleccionadas = alcaldias_seleccionadas if alcaldias_seleccionadas else ['Álvaro Obregón'] %}
+      
+      {% for alc_sel in seleccionadas %}
       <div class="form-group select-alcaldia">
         <label>Alcaldía</label>
         <select name="alcaldia[]">
-          <option value="Álvaro Obregón">Álvaro Obregón</option>
-          <option value="Azcapotzalco">Azcapotzalco</option>
-          <option value="Benito Juárez">Benito Juárez</option>
-          <option value="Coyoacán">Coyoacán</option>
-          <option value="Cuajimalpa de Morelos">Cuajimalpa de Morelos</option>
-          <option value="Cuauhtémoc">Cuauhtémoc</option>
-          <option value="Gustavo A. Madero">Gustavo A. Madero</option>
-          <option value="Iztacalco">Iztacalco</option>
-          <option value="Iztapalapa">Iztapalapa</option>
-          <option value="La Magdalena Contreras">La Magdalena Contreras</option>
-          <option value="Miguel Hidalgo">Miguel Hidalgo</option>
-          <option value="Milpa Alta">Milpa Alta</option>
-          <option value="Tláhuac">Tláhuac</option>
-          <option value="Tlalpan">Tlalpan</option>
-          <option value="Venustiano Carranza">Venustiano Carranza</option>
-          <option value="Xochimilco">Xochimilco</option>
+          {% set lista_alcaldias = [
+            'Álvaro Obregón', 'Azcapotzalco', 'Benito Juárez', 'Coyoacán',
+            'Cuajimalpa de Morelos', 'Cuauhtémoc', 'Gustavo A. Madero',
+            'Iztacalco', 'Iztapalapa', 'La Magdalena Contreras',
+            'Miguel Hidalgo', 'Milpa Alta', 'Tláhuac', 'Tlalpan',
+            'Venustiano Carranza', 'Xochimilco'
+          ] %}
+          {% for alc in lista_alcaldias %}
+            <option value="{{ alc }}" {% if alc == alc_sel %}selected{% endif %}>{{ alc }}</option>
+          {% endfor %}
         </select>
+        
+        {# Agregar botón de eliminar en los selects dinámicos creados previamente #}
+        {% if not loop.first %}
+          <button type="button" class="btn-remove-alcaldia">✕</button>
+        {% endif %}
       </div>
+      {% endfor %}
     </div>
 
     <div class="form-group periodos">
       <label>Periodo inicio</label>
       <select name="periodo_inicio">
-        <option value="2015">2015</option>
-        <option value="2016">2016</option>
-        <option value="2017">2017</option>
-        <option value="2018">2018</option>
-        <option value="2019">2019</option>
-        <option value="2020">2020</option>
+        {% for anio in range(2015, 2021) %}
+          <option value="{{ anio }}" {% if periodo_inicio and periodo_inicio|int == anio %}selected{% endif %}>{{ anio }}</option>
+        {% endfor %}
       </select>
+
       <label>Periodo fin</label>
       <select name="periodo_fin">
-        <option value="2020">2020</option>
-        <option value="2019">2019</option>
-        <option value="2018">2018</option>
-        <option value="2017">2017</option>
-        <option value="2016">2016</option>
-        <option value="2015">2015</option>
+        {% for anio in range(2020, 2014, -1) %}
+          <option value="{{ anio }}" {% if periodo_fin and periodo_fin|int == anio %}selected{% endif %}>{{ anio }}</option>
+        {% endfor %}
       </select>
     </div>
 
     <div class="form-group">
       <label>Parámetro social</label>
       <select name="parametro">
-        <option value="mortalidad">Mortalidad general</option>
-        <option value="nivel_académico">Nivel académico</option>
-        <option value="pobreza">Pobreza</option>
-        <option value="edad">Edad</option>
-        <option value="sexo">Sexo</option>
-        <option value="dmt">Tipo de diabetes</option>
+        <option value="mortalidad" {% if parametro == 'mortalidad' %}selected{% endif %}>Mortalidad general</option>
+        <option value="nivel_académico" {% if parametro == 'nivel_académico' %}selected{% endif %}>Nivel académico</option>
+        <option value="pobreza" {% if parametro == 'pobreza' %}selected{% endif %}>Pobreza</option>
+        <option value="edad" {% if parametro == 'edad' %}selected{% endif %}>Edad</option>
+        <option value="sexo" {% if parametro == 'sexo' %}selected{% endif %}>Sexo</option>
+        <option value="dmt" {% if parametro == 'dmt' %}selected{% endif %}>Tipo de diabetes</option>
       </select>
     </div>
 
@@ -81,14 +79,13 @@
     
   </form>
 
-  <!-- Botón para agregar más alcaldías (en su posición original) -->
+  <!-- Botón para agregar más alcaldías -->
   <button type="button" id="btn-add-alcaldia" class="selected__add">+</button>
 
   <!-- CONTENEDOR DE LA GRÁFICA / RESULTADOS -->
   <div class="consulta">
     {% block mortalidad %}{% endblock %}
     {% block pobreza %}{% endblock %}
-    
   </div>
 </section>
 
@@ -99,36 +96,51 @@
     const addButton = document.getElementById('btn-add-alcaldia');
     const MAX_SELECTS = 5;
 
+    const updateAddButtonState = () => {
+      const count = container.querySelectorAll('.select-alcaldia').length;
+      addButton.disabled = count >= MAX_SELECTS;
+    };
+
+    // Asignar evento de eliminar a los botones dinámicos cargados desde el servidor
+    container.addEventListener('click', (e) => {
+      if (e.target && e.target.classList.contains('btn-remove-alcaldia')) {
+        e.target.closest('.select-alcaldia').remove();
+        updateAddButtonState();
+      }
+    });
+
     addButton.addEventListener('click', (e) => {
       e.preventDefault();
-      
       const currentSelects = container.querySelectorAll('.select-alcaldia');
 
       if (currentSelects.length < MAX_SELECTS) {
         const newGroup = currentSelects[0].cloneNode(true);
         
+        // Limpiar botones de eliminar previos si el clon los tiene
+        const oldBtn = newGroup.querySelector('.btn-remove-alcaldia');
+        if (oldBtn) oldBtn.remove();
+
+        // Crear nuevo botón de eliminar
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.textContent = '✕';
         removeBtn.className = 'btn-remove-alcaldia';
-        removeBtn.onclick = () => {
-          newGroup.remove();
-          addButton.disabled = false;
-        };
 
         newGroup.appendChild(removeBtn);
         container.appendChild(newGroup);
 
-        if (container.querySelectorAll('.select-alcaldia').length >= MAX_SELECTS) {
-          addButton.disabled = true;
-        }
+        updateAddButtonState();
       }
     });
+
+    // Validar estado inicial del botón '+'
+    updateAddButtonState();
   });
 </script>
+
 {% if error %}
   <script>
     alert("{{ error }}");
   </script>
-  {% endif %}
+{% endif %}
 {% endblock %}
