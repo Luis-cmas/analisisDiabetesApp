@@ -3,14 +3,21 @@ body{
   padding: 0;
 }
 
+/* HEADER / NAVBAR RESPONSIVO */
+.navbar {
+  width: 100%;
+  background-color: #82204A;
+  box-sizing: border-box;
+}
+
 .navbar nav {
   display: flex;
-  background-color: #82204A;
-  gap: 70vw;
+  justify-content: space-between; /* Distribuye el logo a la izquierda y el botón a la derecha */
   align-items: center;
-  padding: 5vh;
-  
-  margin: 0;
+  max-width: 1200px;              /* Ancho máximo para pantallas grandes */
+  margin: 0 auto;                 /* Centra el contenido en pantallas muy anchas */
+  padding: 1rem 2rem;             /* Padding responsivo con unidades rem */
+  box-sizing: border-box;
 }
 
 .navbar nav a {
@@ -19,10 +26,17 @@ body{
   font-weight: 500;
 }
 
+.navbar__brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .navbar__button {
   background: #000;
-  padding: 14px 24px;
+  padding: 10px 20px;
   border-radius: 8px;
+  white-space: nowrap;
   transition: background 0.3s ease;
 }
 
@@ -30,6 +44,21 @@ body{
   background: #333;
 }
 
+/* MEDIA QUERIES PARA PANTALLAS PEQUEÑAS (MÓVILES) */
+@media (max-width: 600px) {
+  .navbar nav {
+    padding: 0.8rem 1rem;
+  }
+  
+  .navbar__brand {
+    font-size: 1rem;
+  }
+  
+  .navbar__button {
+    padding: 8px 14px;
+    font-size: 0.875rem;
+  }
+}
 /* CONSULTAS */
 .consultas {
   display: flex;

@@ -50,7 +50,10 @@ else:
     # ENTORNO PRODUCCIÓN: Conexión directa
     # ------------------------------------------------------------------
     cadena_conexion = f"mysql+pymysql://{usuario_bd}:{pass_bd}@{host_bd}/{nombre_bd}"
-    engine = create_engine(cadena_conexion)
+    engine = create_engine(cadena_conexion,
+                                pool_recycle=280,  # Recicla conexiones cada 280 segundos
+                                pool_pre_ping=True  # Verifica si la conexión sigue viva antes de usarla
+                                )
 
 
 # --- RUTAS DE FLASK ---
