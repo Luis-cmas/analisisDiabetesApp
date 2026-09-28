@@ -277,15 +277,134 @@ def consultar():
             SELECT
                 a.nombre AS alcaldia,
                 p.periodo,
-                p.edad,
-                COUNT(*) AS total_pacientes
+                -- Agrupación de casos de pacientes por rango de edad
+                COUNT(CASE WHEN p.edad BETWEEN 0 AND 14 THEN 1 END) AS casos_0a14,
+                COUNT(CASE WHEN p.edad BETWEEN 15 AND 24 THEN 1 END) AS casos_15a24,
+                COUNT(CASE WHEN p.edad BETWEEN 25 AND 59 THEN 1 END) AS casos_25a59,
+                COUNT(CASE WHEN p.edad >= 60 THEN 1 END) AS casos_60ymas,
+                -- Población por rango de edad por alcaldía y periodo
+                MAX(a.p_0a14) AS pob_0a14,
+                MAX(a.p_15a24) AS pob_15a24,
+                MAX(a.p_25a59) AS pob_25a59, -- Asegúrate que la columna en la BD coincida con el nombre exacto
+                MAX(a.p_60ymas) AS pob_60ymas
             FROM Paciente p
-            JOIN Alcaldia a ON p.clave_municipio = a.id_alcaldia AND p.periodo = a.periodo
+            JOIN Alcaldia a 
+                ON p.clave_municipio = a.id_alcaldia 
+               AND p.periodo = a.periodo
             WHERE a.nombre IN :alcaldias
               AND p.periodo BETWEEN :p_min AND :p_max
-            GROUP BY a.nombre, p.periodo, p.edad
-            ORDER BY p.periodo ASC, p.edad ASC;
+            GROUP BY a.nombre, p.periodo
+            ORDER BY p.periodo ASC, a.nombre ASC;
         """)
+
+        with engine.connect() as conn:
+            df = pd.read_sql(
+                query,
+                con=conn,
+                params={
+                    'alcaldias': tuple(alcaldias),
+                    'p_min': periodo_min,
+                    'p_max': periodo_max,
+                },
+            )
+
+        if df.empty:
+            return render_template(
+                'edad.html',
+                error='No se encontraron datos para la consulta.',
+                alcaldias_seleccionadas=alcaldias,
+                periodo_inicio=p_inicio,
+                periodo_fin=p_fin,
+                parametro=parametro,
+            )
+
+        # 1. Cálculo de las tasas de incidencia por cada 100k de cada grupo de edad
+        # Evitamos división entre cero con fillna(0) o condicionales
+        df['tasa_0a14'] = (
+            (df['casos_0a14'] / df['pob_0a14']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_15a24'] = (
+            (df['casos_15a24'] / df['pob_15a24']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_25a59'] = (
+            (df['casos_25a59'] / df['pob_25a59']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_60ymas'] = (
+            (df['casos_60ymas'] / df['pob_60ymas']).fillna(0) * 100000
+        ).round(2)
+
+        # 2. Obtenemos los periodos únicos para el eje X
+        periodos_eje_x = sorted(df['periodo'].unique().tolist())
+
+        # Palette de colores asignada por alcaldía
+        colores = [
+            '#007bff',
+            '#28a745',
+            '#dc3545',
+            '#ffc107',
+            '#17a2b8',
+            '#6610f2',
+            '#fd7e14',
+        ]
+
+        # Definiendo los 4 grupos de edad para estructurar las 4 gráficas
+        grupos_edad = [
+            {'key': 'tasa_0a14', 'titulo': 'Tasa de Mortalidad (0 a 14 años)'},
+            {
+                'key': 'tasa_15a24',
+                'titulo': 'Tasa de Mortalidad (15 a 24 años)',
+            },
+            {
+                'key': 'tasa_25a59',
+                'titulo': 'Tasa de Mortalidad (25 a 59 años)',
+            },
+            {
+                'key': 'tasa_60ymas',
+                'titulo': 'Tasa de Mortalidad (60 o más años)',
+            },
+        ]
+
+        graficas_data = []
+
+        for grupo in grupos_edad:
+            datasets = []
+            for i, alcaldia in enumerate(df['alcaldia'].unique()):
+                df_alc = df[df['alcaldia'] == alcaldia]
+
+                # Mapear las tasas correspondientes al periodo
+                tasas_map = dict(zip(df_alc['periodo'], df_alc[grupo['key']]))
+                datos_serie = [
+                    tasas_map.get(p, 0) for p in periodos_eje_x
+                ]
+
+                color = colores[i % len(colores)]
+                datasets.append({
+                    'label': alcaldia,
+                    'data': datos_serie,
+                    'borderColor': color,
+                    'backgroundColor': color,
+                    'borderWidth': 2,
+                    'fill': False,
+                    'tension': 0.2,
+                })
+
+            graficas_data.append({
+                'titulo': grupo['titulo'],
+                'periodos': periodos_eje_x,
+                'datasets': datasets,
+            })
+
+        datos_consulta = df.to_dict(orient='records')
+
+        return render_template(
+            'edad.html',
+            resultados=datos_consulta,
+            alcaldias_seleccionadas=alcaldias,
+            periodo_inicio=p_inicio,
+            periodo_fin=p_fin,
+            parametro=parametro,
+            graficas=graficas_data,  # Contiene la información para las 4 gráficas
+        )
 
     elif parametro == 'sexo':
         query = text("""
