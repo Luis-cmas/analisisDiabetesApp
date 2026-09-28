@@ -411,30 +411,221 @@ def consultar():
             SELECT
                 a.nombre AS alcaldia,
                 p.periodo,
-                p.sexo,
-                COUNT(*) AS total_pacientes
+                -- Agregación condicional por sexo (1 y 2)
+                COUNT(CASE WHEN p.sexo = 1 THEN 1 END) AS casos_hombres,
+                COUNT(CASE WHEN p.sexo = 2 THEN 1 END) AS casos_mujeres,
+                MAX(a.pobmas) AS pob_masculina,
+                MAX(a.pobfem) AS pob_femenina
             FROM Paciente p
-            JOIN Alcaldia a ON p.clave_municipio = a.id_alcaldia AND p.periodo = a.periodo
+            JOIN Alcaldia a 
+                ON p.clave_municipio = a.id_alcaldia 
+               AND p.periodo = a.periodo
             WHERE a.nombre IN :alcaldias
               AND p.periodo BETWEEN :p_min AND :p_max
-            GROUP BY a.nombre, p.periodo, p.sexo
-            ORDER BY p.periodo ASC, p.sexo ASC;
+            GROUP BY a.nombre, p.periodo
+            ORDER BY p.periodo ASC, a.nombre ASC;
         """)
+
+        with engine.connect() as conn:
+            df = pd.read_sql(
+                query,
+                con=conn,
+                params={
+                    'alcaldias': tuple(alcaldias),
+                    'p_min': periodo_min,
+                    'p_max': periodo_max,
+                },
+            )
+
+        if df.empty:
+            return render_template(
+                'sexo.html',
+                error='No se encontraron datos para la consulta.',
+                alcaldias_seleccionadas=alcaldias,
+                periodo_inicio=p_inicio,
+                periodo_fin=p_fin,
+                parametro=parametro,
+            )
+
+        # 1. Cálculo de las tasas de casos por cada 100k habitantes (población masculina y femenina)
+        df['tasa_hombres'] = (
+            (df['casos_hombres'] / df['pob_masculina']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_mujeres'] = (
+            (df['casos_mujeres'] / df['pob_femenina']).fillna(0) * 100000
+        ).round(2)
+
+        # 2. Eje X con los periodos únicos ordenados
+        periodos_eje_x = sorted(df['periodo'].unique().tolist())
+
+        # Paleta de colores para identificar cada alcaldía
+        colores = [
+            '#007bff',
+            '#28a745',
+            '#dc3545',
+            '#ffc107',
+            '#17a2b8',
+            '#6610f2',
+            '#fd7e14',
+        ]
+
+        # Definición de los 2 grupos para estructurar las 2 gráficas
+        grupos_sexo = [
+            {'key': 'tasa_hombres', 'titulo': 'Tasa de Casos en Hombres (por 100k Hombres)'},
+            {'key': 'tasa_mujeres', 'titulo': 'Tasa de Casos en Mujeres (por 100k Mujeres)'},
+        ]
+
+        graficas_data = []
+
+        for grupo in grupos_sexo:
+            datasets = []
+            for i, alcaldia in enumerate(df['alcaldia'].unique()):
+                df_alc = df[df['alcaldia'] == alcaldia]
+
+                # Mapeo de tasas asegurando que coincidan con cada periodo en el eje X
+                tasas_map = dict(zip(df_alc['periodo'], df_alc[grupo['key']]))
+                datos_serie = [
+                    tasas_map.get(p, 0) for p in periodos_eje_x
+                ]
+
+                color = colores[i % len(colores)]
+                datasets.append({
+                    'label': alcaldia,
+                    'data': datos_serie,
+                    'borderColor': color,
+                    'backgroundColor': color,
+                    'borderWidth': 2,
+                    'fill': False,
+                    'tension': 0.2,
+                })
+
+            graficas_data.append({
+                'titulo': grupo['titulo'],
+                'periodos': periodos_eje_x,
+                'datasets': datasets,
+            })
+
+        datos_consulta = df.to_dict(orient='records')
+
+        return render_template(
+            'sexo.html',
+            resultados=datos_consulta,
+            alcaldias_seleccionadas=alcaldias,
+            periodo_inicio=p_inicio,
+            periodo_fin=p_fin,
+            parametro=parametro,
+            graficas=graficas_data,  # Datos estructurados para las 2 gráficas
+        )
 
     elif parametro == 'dmt':
         query = text("""
             SELECT
                 a.nombre AS alcaldia,
                 p.periodo,
-                p.dmt AS tipo_diabetes,
-                COUNT(*) AS total_pacientes
+                -- Agregación condicional por tipo de diabetes (1 y 2)
+                COUNT(CASE WHEN p.dmt = 1 THEN 1 END) AS casos_dmt1,
+                COUNT(CASE WHEN p.dmt = 2 THEN 1 END) AS casos_dmt2,
+                MAX(a.habitantes) AS habitantes
             FROM Paciente p
-            JOIN Alcaldia a ON p.clave_municipio = a.id_alcaldia AND p.periodo = a.periodo
+            JOIN Alcaldia a 
+                ON p.clave_municipio = a.id_alcaldia 
+               AND p.periodo = a.periodo
             WHERE a.nombre IN :alcaldias
               AND p.periodo BETWEEN :p_min AND :p_max
-            GROUP BY a.nombre, p.periodo, p.dmt
-            ORDER BY p.periodo ASC, p.dmt ASC;
+            GROUP BY a.nombre, p.periodo
+            ORDER BY p.periodo ASC, a.nombre ASC;
         """)
+
+        with engine.connect() as conn:
+            df = pd.read_sql(
+                query,
+                con=conn,
+                params={
+                    'alcaldias': tuple(alcaldias),
+                    'p_min': periodo_min,
+                    'p_max': periodo_max,
+                },
+            )
+
+        if df.empty:
+            return render_template(
+                'dmt.html',
+                error='No se encontraron datos para la consulta.',
+                alcaldias_seleccionadas=alcaldias,
+                periodo_inicio=p_inicio,
+                periodo_fin=p_fin,
+                parametro=parametro,
+            )
+
+        # 1. Cálculo de las tasas de casos por cada 100k habitantes
+        df['tasa_dmt1'] = (
+            (df['casos_dmt1'] / df['habitantes']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_dmt2'] = (
+            (df['casos_dmt2'] / df['habitantes']).fillna(0) * 100000
+        ).round(2)
+
+        # 2. Eje X con los periodos únicos ordenados
+        periodos_eje_x = sorted(df['periodo'].unique().tolist())
+
+        # Paleta de colores para identificar cada alcaldía
+        colores = [
+            '#007bff',
+            '#28a745',
+            '#dc3545',
+            '#ffc107',
+            '#17a2b8',
+            '#6610f2',
+            '#fd7e14',
+        ]
+
+        # Definición de los 2 tipos de DMT para estructurar las 2 gráficas
+        tipos_dmt = [
+            {'key': 'tasa_dmt1', 'titulo': 'Tasa de Diabetes Tipo 1'},
+            {'key': 'tasa_dmt2', 'titulo': 'Tasa de Diabetes Tipo 2'},
+        ]
+
+        graficas_data = []
+
+        for tipo in tipos_dmt:
+            datasets = []
+            for i, alcaldia in enumerate(df['alcaldia'].unique()):
+                df_alc = df[df['alcaldia'] == alcaldia]
+
+                # Mapeo de tasas asegurando que coincidan con cada periodo en el eje X
+                tasas_map = dict(zip(df_alc['periodo'], df_alc[tipo['key']]))
+                datos_serie = [
+                    tasas_map.get(p, 0) for p in periodos_eje_x
+                ]
+
+                color = colores[i % len(colores)]
+                datasets.append({
+                    'label': alcaldia,
+                    'data': datos_serie,
+                    'borderColor': color,
+                    'backgroundColor': color,
+                    'borderWidth': 2,
+                    'fill': False,
+                    'tension': 0.2,
+                })
+
+            graficas_data.append({
+                'titulo': tipo['titulo'],
+                'periodos': periodos_eje_x,
+                'datasets': datasets,
+            })
+
+        datos_consulta = df.to_dict(orient='records')
+
+        return render_template(
+            'dmt.html',
+            resultados=datos_consulta,
+            alcaldias_seleccionadas=alcaldias,
+            periodo_inicio=p_inicio,
+            periodo_fin=p_fin,
+            parametro=parametro,
+            graficas=graficas_data,  # Pasa las 2 estructuras de gráfica a la plantilla
+        )
 
     # # 3. Ejecutar la consulta en la base de datos
     # with engine.connect() as conn:
