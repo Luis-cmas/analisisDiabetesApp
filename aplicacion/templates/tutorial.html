@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 style="text-align: center;">BIENVENIDO AL TUTORIAL</h1>
+<img src="{{ url_for('static', filename='imagenes/tutorial.png') }}" 
+     alt="Tutorial de cómo realizar consultas" 
+     style="display: block; margin: 0 auto; max-width: 90vw; padding: 10px; height: auto; border-radius: 8px;">
+{% endblock %}

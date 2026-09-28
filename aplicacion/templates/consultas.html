@@ -11,7 +11,8 @@
       que primero veas el siguiente tutorial
     </p>
 
-    <button class="btn btn--info">Ver tutorial</button>
+    <!-- <button class="btn btn--info">Ver tutorial</button> -->
+    <a href="{{ url_for('tutorial') }}" class="btn btn--info">Ver tutorial</a>
   </div>
 
   <!-- FORMULARIO -->
@@ -89,6 +90,7 @@
     {% block edades %}{% endblock %}
     {% block dmt %}{% endblock %}
     {% block sexo %}{% endblock %}
+    {% block nivel_academico %}{% endblock %}
   </div>
 </section>
 

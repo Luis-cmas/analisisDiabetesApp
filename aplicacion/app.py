@@ -64,6 +64,10 @@ def index():
 def consulta():
     return render_template("consultas.html")
 
+@app.route('/tutorial/')
+def tutorial():
+    return render_template("tutorial.html")
+
 ########################################################################################################################
 @app.route('/consultar', methods=['POST'])
 def consultar():
@@ -170,17 +174,146 @@ def consultar():
     elif parametro == 'nivel_académico':
         query = text("""
             SELECT
-                nombre AS alcaldia,
-                periodo,
-                habitantes,
-                p15ym_se AS sin_escolaridad,
-                p15pri_co AS primaria_completa,
-                p15sec_co AS secundaria_completa
-            FROM Alcaldia
-            WHERE nombre IN :alcaldias
-              AND periodo BETWEEN :p_min AND :p_max
-            ORDER BY periodo ASC, nombre ASC;
+                a.nombre AS alcaldia,
+                p.clave_municipio,
+                a.periodo,
+                a.habitantes,
+                a.p15ym_se AS preescolar,
+                (a.p15pri_co + a.p15pri_in) AS primaria,
+                (a.p15sec_co + a.p15sec_in) AS secundaria,
+                a.p18ym_pb AS prepa_ymas,
+                SUM(CASE WHEN p.nivel_academico IN (1, 2) THEN 1 ELSE 0 END) AS casos_preescolar,
+                SUM(CASE WHEN p.nivel_academico IN (3, 4) THEN 1 ELSE 0 END) AS casos_primaria,
+                SUM(CASE WHEN p.nivel_academico IN (5, 6) THEN 1 ELSE 0 END) AS casos_secundaria,
+                SUM(CASE WHEN p.nivel_academico IN (7, 8, 9, 10) THEN 1 ELSE 0 END) AS casos_preparatoria_mas
+            FROM Alcaldia a
+            JOIN Paciente p 
+                ON p.clave_municipio = a.id_alcaldia 
+               AND p.periodo = a.periodo
+            WHERE a.nombre IN :alcaldias
+              AND a.periodo BETWEEN :p_min AND :p_max
+            GROUP BY 
+                a.id_alcaldia,
+                a.nombre,
+                p.clave_municipio,
+                a.periodo,
+                a.habitantes,
+                a.p15ym_se,
+                a.p15pri_co,
+                a.p15pri_in,
+                a.p15sec_co,
+                a.p15sec_in,
+                a.p18ym_pb
+            ORDER BY 
+                a.periodo ASC, 
+                a.nombre ASC;
         """)
+
+        with engine.connect() as conn:
+            df = pd.read_sql(
+                query,
+                con=conn,
+                params={
+                    'alcaldias': tuple(alcaldias),
+                    'p_min': periodo_min,
+                    'p_max': periodo_max,
+                },
+            )
+
+        if df.empty:
+            return render_template(
+                'nivel_academico.html',
+                error='No se encontraron datos para la consulta.',
+                alcaldias_seleccionadas=alcaldias,
+                periodo_inicio=p_inicio,
+                periodo_fin=p_fin,
+                parametro=parametro,
+            )
+
+        # 1. Cálculo de las tasas de incidencia por cada 100k de cada grupo de nivel académico
+        # Usamos fillna(0) para evitar divisiones entre cero
+        df['tasa_preescolar'] = (
+            (df['casos_preescolar'] / df['preescolar']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_primaria'] = (
+            (df['casos_primaria'] / df['primaria']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_secundaria'] = (
+            (df['casos_secundaria'] / df['secundaria']).fillna(0) * 100000
+        ).round(2)
+        df['tasa_prepa_ymas'] = (
+            (df['casos_preparatoria_mas'] / df['prepa_ymas']).fillna(0) * 100000
+        ).round(2)
+
+        # 2. Periodos únicos para el eje X
+        periodos_eje_x = sorted(df['periodo'].unique().tolist())
+
+        # Paleta de colores para identificar las alcaldías
+        colores = [
+            '#007bff',
+            '#28a745',
+            '#dc3545',
+            '#ffc107',
+            '#17a2b8',
+            '#6610f2',
+            '#fd7e14',
+        ]
+
+        # Definición de los 4 grupos académicos para generar las 4 gráficas
+        grupos_academicos = [
+            {
+                'key': 'tasa_preescolar',
+                'titulo': 'Tasa de Casos - Preescolar / Sin Escolaridad',
+            },
+            {'key': 'tasa_primaria', 'titulo': 'Tasa de Casos - Primaria'},
+            {'key': 'tasa_secundaria', 'titulo': 'Tasa de Casos - Secundaria'},
+            {
+                'key': 'tasa_prepa_ymas',
+                'titulo': 'Tasa de Casos - Preparatoria o Superior',
+            },
+        ]
+
+        graficas_data = []
+
+        for grupo in grupos_academicos:
+            datasets = []
+            for i, alcaldia in enumerate(df['alcaldia'].unique()):
+                df_alc = df[df['alcaldia'] == alcaldia]
+
+                # Mapeo de tasas correspondientes al periodo
+                tasas_map = dict(zip(df_alc['periodo'], df_alc[grupo['key']]))
+                datos_serie = [
+                    tasas_map.get(p, 0) for p in periodos_eje_x
+                ]
+
+                color = colores[i % len(colores)]
+                datasets.append({
+                    'label': alcaldia,
+                    'data': datos_serie,
+                    'borderColor': color,
+                    'backgroundColor': color,
+                    'borderWidth': 2,
+                    'fill': False,
+                    'tension': 0.2,
+                })
+
+            graficas_data.append({
+                'titulo': grupo['titulo'],
+                'periodos': periodos_eje_x,
+                'datasets': datasets,
+            })
+
+        datos_consulta = df.to_dict(orient='records')
+
+        return render_template(
+            'nivel_academico.html',
+            resultados=datos_consulta,
+            alcaldias_seleccionadas=alcaldias,
+            periodo_inicio=p_inicio,
+            periodo_fin=p_fin,
+            parametro=parametro,
+            graficas=graficas_data,  # Contiene la información para las 4 gráficas
+        )
 
     elif parametro == 'pobreza':
         query = text("""

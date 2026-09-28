@@ -1,0 +1,69 @@
+{% extends "consultas.html" %}
+
+{% block nivel_academico %}
+{% if graficas %}
+<div class="container my-4">
+    <h3 class="text-center mb-4">Tasa de Casos por Nivel Académico (por 100k Habitantes del Grupo)</h3>
+
+    <div class="row">
+        {% for grafica in graficas %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm p-3">
+                <h5 class="card-title text-center fs-6 fw-bold">{{ grafica.titulo }}</h5>
+                <div style="position: relative; height: 320px; width: 100%;">
+                    <canvas id="graficaAcademica_{{ loop.index }}"></canvas>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Recibir los datos del arreglo de las 4 gráficas enviadas desde Flask
+    const graficasData = {{ graficas | tojson }};
+
+    graficasData.forEach((grafica, index) => {
+      const canvasId = `graficaAcademica_${index + 1}`;
+      const ctx = document.getElementById(canvasId).getContext('2d');
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: grafica.periodos,
+          datasets: grafica.datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12 }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw} por 100k hab.`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Periodo' }
+            },
+            y: {
+              title: { display: true, text: 'Tasa por 100k' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
