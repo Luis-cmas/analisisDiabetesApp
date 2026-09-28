@@ -1,0 +1,71 @@
+{% extends "consultas.html" %}
+
+{% block pobreza %}
+{% if datos_grafica %}
+<div class="card my-4 p-3 shadow-sm" style="width: 90vw; margin: 20px auto; display: flex; flex-direction: column; align-items: center;">
+    <h4 class="card-title text-center">Pobreza vs. Tasa de Mortalidad por Alcaldía</h4>
+    
+    <div style="position: relative; width: 100%; max-width: 900px; height: 500px;">
+        <canvas id="graficaBurbuja"></canvas>
+    </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('graficaBurbuja').getContext('2d');
+    
+    // Inyectamos los datasets serializados desde Flask/Jinja2
+    const dataSets = {{ datos_grafica | tojson }};
+
+    new Chart(ctx, {
+      type: 'bubble',
+      data: {
+        datasets: dataSets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const punto = context.raw;
+                const alcaldia = context.dataset.label;
+                return [
+                  `${alcaldia} (${punto.x})`,
+                  `Pobreza: ${punto.y}%`,
+                  `Tasa Mortalidad: ${punto.tasa_real} por 100k hab.`,
+                  `Casos totales: ${punto.casos}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Año / Periodo'
+            },
+            ticks: {
+              stepSize: 1,
+              precision: 0
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Porcentaje de Pobreza (%)'
+            },
+            beginAtZero: false
+          }
+        }
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}

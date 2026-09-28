@@ -40,7 +40,10 @@ if __name__ == '__main__':
     tunnel.start()
 
     cadena_conexion = f"mysql+pymysql://{usuario_bd}:{pass_bd}@127.0.0.1:{tunnel.local_bind_port}/{nombre_bd}"
-    engine = create_engine(cadena_conexion)
+    engine = create_engine(cadena_conexion,
+                            pool_recycle=280,  # Recicla conexiones cada 280 segundos
+                            pool_pre_ping=True  # Verifica si la conexión sigue viva antes de usarla
+                            )
     print(f"-> Túnel SSH iniciado en el puerto local: {tunnel.local_bind_port}")
 else:
     # ------------------------------------------------------------------
@@ -61,7 +64,7 @@ def index():
 def consulta():
     return render_template("consultas.html")
 
-
+########################################################################################################################
 @app.route('/consultar', methods=['POST'])
 def consultar():
     # 1. Obtenemos la lista de alcaldías seleccionadas y los periodos
@@ -182,17 +185,92 @@ def consultar():
     elif parametro == 'pobreza':
         query = text("""
             SELECT
-                nombre AS alcaldia,
-                periodo,
-                pobreza_porcentaje,
-                pobreza_extrema_porcentaje,
-                pobreza_moderada_porcentaje,
-                pobreza_poblacion
-            FROM Alcaldia
-            WHERE nombre IN :alcaldias
-              AND periodo BETWEEN :p_min AND :p_max
-            ORDER BY periodo ASC, nombre ASC;
+                a.nombre AS alcaldia,
+                a.periodo,
+                a.pobreza_porcentaje,
+                a.pobreza_poblacion,
+                COUNT(p.sexo) AS casos_totales,
+                a.habitantes
+            FROM Alcaldia a
+            JOIN Paciente p 
+                ON p.clave_municipio = a.id_alcaldia 
+               AND p.periodo = a.periodo
+            WHERE a.nombre IN :alcaldias
+              AND a.periodo BETWEEN :p_min AND :p_max
+            GROUP BY a.nombre, a.periodo, a.pobreza_porcentaje, a.pobreza_poblacion, a.habitantes
+            ORDER BY a.periodo ASC, a.nombre ASC;
         """)
+
+        # Ejecutamos la consulta usando engine.connect() como en el bloque de mortalidad
+        with engine.connect() as conn:
+            df = pd.read_sql(
+                query,
+                con=conn,
+                params={
+                    'alcaldias': tuple(alcaldias),
+                    'p_min': periodo_min,
+                    'p_max': periodo_max,
+                },
+            )
+
+        if df.empty:
+            return render_template(
+                'pobreza.html',
+                error='No se encontraron datos para la consulta.',
+                alcaldias_seleccionadas=alcaldias,
+                periodo_inicio=p_inicio,
+                periodo_fin=p_fin,
+                parametro=parametro,
+            )
+
+        # 1. Calculamos la tasa de mortalidad por cada 100k habitantes
+        df['tasa_100k'] = (df['casos_totales'] / df['habitantes']) * 100000
+
+        # 2. Factor de escala para el tamaño visual de la burbuja en px
+        FACTOR_ESCALA = 0.15
+        df['radio_burbuja'] = df['tasa_100k'] * FACTOR_ESCALA
+
+        colores = [
+            'rgba(255, 99, 132, 0.6)',
+            'rgba(54, 162, 235, 0.6)',
+            'rgba(255, 206, 86, 0.6)',
+            'rgba(75, 192, 192, 0.6)',
+            'rgba(153, 102, 255, 0.6)',
+            'rgba(255, 159, 64, 0.6)',
+        ]
+
+        datasets = []
+        for i, (alcaldia_nombre, group) in enumerate(df.groupby('alcaldia')):
+            puntos = []
+            for _, row in group.iterrows():
+                puntos.append({
+                    'x': int(row['periodo']),
+                    'y': float(row['pobreza_porcentaje']),
+                    'r': round(float(row['radio_burbuja']), 2),
+                    'tasa_real': round(float(row['tasa_100k']), 2),
+                    'casos': int(row['casos_totales']),
+                })
+
+            color = colores[i % len(colores)]
+            datasets.append({
+                'label': alcaldia_nombre,
+                'data': puntos,
+                'backgroundColor': color,
+                'borderColor': color.replace('0.6', '1.0'),
+                'borderWidth': 1,
+            })
+
+        datos_consulta = df.to_dict(orient='records')
+
+        return render_template(
+            'pobreza.html',
+            resultados=datos_consulta,
+            alcaldias_seleccionadas=alcaldias,
+            periodo_inicio=p_inicio,
+            periodo_fin=p_fin,
+            parametro=parametro,
+            datos_grafica=datasets,
+        )
 
     elif parametro == 'edad':
         query = text("""
